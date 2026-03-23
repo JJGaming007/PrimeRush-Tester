@@ -453,7 +453,7 @@
     </div>
 
     <div class="done-buttons">
-      <button class="btn btn-primary" onclick="saveToSheet()">Save to Google Sheet</button>
+      <button class="btn btn-primary" onclick="saveToSheet()">Save Results to Excel</button>
       <button class="btn btn-outline" onclick="copyBugSummary()">Copy Bug Summary</button>
     </div>
 
@@ -474,10 +474,10 @@
     // Init — load items from server
     // ============================================================
     window.addEventListener('load', () => {
-      google.script.run
-        .withSuccessHandler(onItemsLoaded)
-        .withFailureHandler(onLoadError)
-        .getContentItems();
+      fetch('/items')
+        .then(r => r.json())
+        .then(onItemsLoaded)
+        .catch(onLoadError);
     });
 
     function onItemsLoaded(response) {
@@ -731,21 +731,25 @@
       statusEl.className = 'save-status';
       statusEl.textContent = 'Saving...';
 
-      google.script.run
-        .withSuccessHandler(res => {
+      fetch('/save', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ results: flatResults, summary }),
+      })
+        .then(r => r.json())
+        .then(res => {
           if (res.success) {
-            statusEl.className  = 'save-status ok';
-            statusEl.textContent = 'Saved to tab "' + res.tabName + '"';
+            statusEl.className   = 'save-status ok';
+            statusEl.textContent = 'Saved as "' + res.filename + '" in the folder where you ran the script.';
           } else {
-            statusEl.className  = 'save-status err';
+            statusEl.className   = 'save-status err';
             statusEl.textContent = 'Save failed: ' + res.error;
           }
         })
-        .withFailureHandler(err => {
-          statusEl.className  = 'save-status err';
+        .catch(err => {
+          statusEl.className   = 'save-status err';
           statusEl.textContent = 'Save failed: ' + String(err.message || err);
-        })
-        .saveSessionResults(flatResults, summary);
+        });
     }
 
     function copyBugSummary() {
