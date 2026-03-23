@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prime Rush Release Tester</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0d14;
+      --surface:   #16161f;
+      --surface2:  #1e1e2e;
+      --border:    #2a2a3e;
+      --accent:    #7c6af7;
+      --accent2:   #a78bfa;
+      --text:      #e2e2f0;
+      --muted:     #7070a0;
+      --pass:      #22c55e;
+      --pass-bg:   #052e16;
+      --bug:       #ef4444;
+      --bug-bg:    #2d0909;
+      --skip:      #f59e0b;
+      --skip-bg:   #2d1f03;
+      --radius:    12px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    /* ---- Screens ---- */
+    .screen { display: none; width: 100%; max-width: 680px; }
+    .screen.active { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ---- Loading ---- */
+    #screen-loading { align-items: center; text-align: center; gap: 24px; }
+
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text { color: var(--muted); font-size: 0.95rem; }
+
+    /* ---- Ready ---- */
+    #screen-ready { align-items: center; text-align: center; }
+
+    .logo {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent2);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .ready-title {
+      font-size: 1.9rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .ready-subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .category-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 10px;
+    }
+
+    .category-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.88rem;
+    }
+
+    .category-chip .cat-name { font-weight: 600; }
+    .category-chip .cat-count {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    /* ---- Buttons ---- */
+    .btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:hover  { opacity: 0.88; }
+
+    .btn-primary   { background: var(--accent); color: #fff; }
+    .btn-pass      { background: var(--pass);  color: #fff; flex: 1; font-size: 1.05rem; padding: 16px; }
+    .btn-bug       { background: var(--bug);   color: #fff; flex: 1; font-size: 1.05rem; padding: 16px; }
+    .btn-skip      { background: var(--skip);  color: #000; flex: 1; font-size: 1.05rem; padding: 16px; }
+    .btn-outline   { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-sm        { padding: 8px 18px; font-size: 0.88rem; }
+
+    /* ---- Testing screen ---- */
+    #screen-testing { gap: 12px; }
+
+    .progress-bar-wrap {
+      background: var(--surface2);
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .category-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--accent);
+      color: var(--accent2);
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      align-self: flex-start;
+    }
+
+    .item-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .item-name {
+      font-size: 1.7rem;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .item-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .tag.rarity-common   { border-color: #555; }
+    .tag.rarity-rare     { border-color: #3b82f6; color: #93c5fd; }
+    .tag.rarity-epic     { border-color: #a855f7; color: #d8b4fe; }
+    .tag.rarity-legendary{ border-color: #f59e0b; color: #fcd34d; }
+
+    .item-progress {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .keyboard-hint {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: monospace;
+      font-size: 0.78rem;
+    }
+
+    /* ---- Bug entry panel ---- */
+    #bug-panel {
+      display: none;
+      background: var(--bug-bg);
+      border: 1px solid var(--bug);
+      border-radius: var(--radius);
+      padding: 16px;
+      gap: 10px;
+      flex-direction: column;
+    }
+    #bug-panel.open { display: flex; }
+
+    #bug-panel label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--bug);
+    }
+
+    #bug-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+      padding: 10px 14px;
+      resize: vertical;
+      min-height: 72px;
+      font-family: inherit;
+    }
+    #bug-notes:focus { outline: none; border-color: var(--bug); }
+
+    .bug-panel-buttons { display: flex; gap: 8px; }
+
+    /* ---- Done screen ---- */
+    #screen-done { align-items: center; text-align: center; gap: 20px; }
+
+    .done-title { font-size: 2rem; font-weight: 700; }
+
+    .stats-row {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 24px;
+      min-width: 110px;
+    }
+    .stat-box .stat-num  { font-size: 2rem; font-weight: 800; }
+    .stat-box .stat-label{ font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+    .stat-box.pass { border-color: var(--pass); }
+    .stat-box.pass .stat-num { color: var(--pass); }
+    .stat-box.bug  { border-color: var(--bug);  }
+    .stat-box.bug  .stat-num { color: var(--bug);  }
+    .stat-box.skip { border-color: var(--skip); }
+    .stat-box.skip .stat-num { color: var(--skip); }
+
+    .bug-list {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--bug);
+      border-radius: var(--radius);
+      overflow: hidden;
+      text-align: left;
+    }
+
+    .bug-list-header {
+      background: var(--bug-bg);
+      padding: 10px 16px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--bug);
+    }
+
+    .bug-list-item {
+      padding: 10px 16px;
+      border-top: 1px solid var(--border);
+      font-size: 0.88rem;
+    }
+
+    .bug-list-item .bug-item-name { font-weight: 600; }
+    .bug-list-item .bug-item-type { color: var(--muted); font-size: 0.8rem; }
+    .bug-list-item .bug-item-note { color: #fca5a5; margin-top: 2px; }
+
+    .done-buttons { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+    .save-status {
+      font-size: 0.85rem;
+      color: var(--muted);
+      min-height: 20px;
+    }
+    .save-status.ok  { color: var(--pass); }
+    .save-status.err { color: var(--bug);  }
+
+    /* ---- Error screen ---- */
+    #screen-error { align-items: center; text-align: center; gap: 16px; }
+    .error-icon  { font-size: 2.5rem; }
+    .error-title { font-size: 1.3rem; font-weight: 700; color: var(--bug); }
+    .error-msg   { color: var(--muted); font-size: 0.9rem; background: var(--surface); padding: 12px 16px; border-radius: 8px; word-break: break-word; width: 100%; }
+
+    /* ---- Nav row ---- */
+    .nav-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .nav-row button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+    }
+    .nav-row button:hover { background: var(--surface2); color: var(--text); }
+    .nav-row button:disabled { opacity: 0.3; cursor: default; }
+  </style>
+</head>
+<body>
+
+  <!-- LOADING -->
+  <div id="screen-loading" class="screen active">
+    <div class="spinner"></div>
+    <div>
+      <div style="font-weight:600; font-size:1.1rem;">Loading items...</div>
+      <div class="loading-text">Reading from Prime Rush content sheet</div>
+    </div>
+  </div>
+
+  <!-- ERROR -->
+  <div id="screen-error" class="screen">
+    <div class="error-icon">&#9888;</div>
+    <div class="error-title">Could not load items</div>
+    <div id="error-msg" class="error-msg"></div>
+    <button class="btn btn-outline btn-sm" onclick="location.reload()">Retry</button>
+  </div>
+
+  <!-- READY -->
+  <div id="screen-ready" class="screen">
+    <div class="logo">Prime Rush</div>
+    <div class="ready-title">Release Tester</div>
+    <div class="ready-subtitle" id="ready-subtitle"></div>
+    <div class="category-grid" id="category-grid"></div>
+    <button class="btn btn-primary" style="width:100%; margin-top:4px;" onclick="startSession()">
+      Start Test Session
+    </button>
+  </div>
+
+  <!-- TESTING -->
+  <div id="screen-testing" class="screen">
+    <div class="progress-label">
+      <span id="prog-label-left"></span>
+      <span id="prog-label-right"></span>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+
+    <div class="nav-row">
+      <button id="btn-prev" onclick="goBack()" disabled>&#8592; Back</button>
+      <span id="nav-category"></span>
+      <button id="btn-next-cat" onclick="skipCategory()">Skip category &#8594;</button>
+    </div>
+
+    <div class="category-badge" id="item-category-badge"></div>
+
+    <div class="item-card">
+      <div class="item-name" id="item-name"></div>
+      <div class="item-meta" id="item-meta"></div>
+      <div class="item-progress" id="item-progress"></div>
+    </div>
+
+    <div id="bug-panel">
+      <label for="bug-notes">Describe the bug with <span id="bug-item-label"></span>:</label>
+      <textarea id="bug-notes" placeholder="e.g. Shader broken, item invisible in inventory, gacha not spinning..."></textarea>
+      <div class="bug-panel-buttons">
+        <button class="btn btn-bug btn-sm" onclick="confirmBug()">Confirm Bug</button>
+        <button class="btn btn-outline btn-sm" onclick="cancelBug()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="action-buttons" id="action-buttons">
+      <button class="btn btn-pass" onclick="markItem('PASS')">&#10003; Pass</button>
+      <button class="btn btn-bug"  onclick="openBugPanel()">&#9679; Bug</button>
+      <button class="btn btn-skip" onclick="markItem('SKIP')">&#8594; Skip</button>
+    </div>
+
+    <div class="keyboard-hint">
+      <kbd>Enter</kbd> Pass &nbsp;&nbsp;
+      <kbd>B</kbd> Bug &nbsp;&nbsp;
+      <kbd>S</kbd> Skip &nbsp;&nbsp;
+      <kbd>&#8592;</kbd> Back
+    </div>
+  </div>
+
+  <!-- DONE -->
+  <div id="screen-done" class="screen">
+    <div class="done-title" id="done-title"></div>
+
+    <div class="stats-row">
+      <div class="stat-box pass">
+        <div class="stat-num" id="stat-pass"></div>
+        <div class="stat-label">Passed</div>
+      </div>
+      <div class="stat-box bug">
+        <div class="stat-num" id="stat-bug"></div>
+        <div class="stat-label">Bugs</div>
+      </div>
+      <div class="stat-box skip">
+        <div class="stat-num" id="stat-skip"></div>
+        <div class="stat-label">Skipped</div>
+      </div>
+    </div>
+
+    <div id="bug-list-wrap" class="bug-list" style="display:none">
+      <div class="bug-list-header">Bugs Found</div>
+      <div id="bug-list-items"></div>
+    </div>
+
+    <div class="done-buttons">
+      <button class="btn btn-primary" onclick="saveToSheet()">Save to Google Sheet</button>
+      <button class="btn btn-outline" onclick="copyBugSummary()">Copy Bug Summary</button>
+    </div>
+
+    <div class="save-status" id="save-status"></div>
+  </div>
+
+  <script>
+    // ============================================================
+    // State
+    // ============================================================
+    let allItems    = [];   // flat ordered list of all items
+    let currentIdx  = 0;
+    let results     = [];   // { type, name, rarity, acquisition, status, bugNotes }
+    let categories  = [];   // array of category names in order
+    let grouped     = {};   // { type: [items] }
+
+    // ============================================================
+    // Init — load items from server
+    // ============================================================
+    window.addEventListener('load', () => {
+      google.script.run
+        .withSuccessHandler(onItemsLoaded)
+        .withFailureHandler(onLoadError)
+        .getContentItems();
+    });
+
+    function onItemsLoaded(response) {
+      if (!response.success) {
+        showError(response.error);
+        return;
+      }
+
+      grouped    = response.data;
+      categories = Object.keys(grouped).sort();
+
+      allItems = [];
+      categories.forEach(cat => {
+        grouped[cat].forEach(item => {
+          allItems.push(Object.assign({}, item, { type: cat }));
+        });
+      });
+
+      if (allItems.length === 0) {
+        showError('No "On Going + Visible" items found in the content sheet. Check that the Status and Visibility column values match exactly.');
+        return;
+      }
+
+      // Build ready screen
+      const subtitle = document.getElementById('ready-subtitle');
+      subtitle.textContent = allItems.length + ' items across ' + categories.length + ' categories';
+
+      const grid = document.getElementById('category-grid');
+      categories.forEach(cat => {
+        const chip = document.createElement('div');
+        chip.className = 'category-chip';
+        chip.innerHTML = '<span class="cat-name">' + esc(cat) + '</span>'
+                       + '<span class="cat-count">' + grouped[cat].length + '</span>';
+        grid.appendChild(chip);
+      });
+
+      showScreen('ready');
+    }
+
+    function onLoadError(err) {
+      showError(String(err.message || err));
+    }
+
+    // ============================================================
+    // Session
+    // ============================================================
+    function startSession() {
+      currentIdx = 0;
+      results    = allItems.map(item => ({
+        type:        item.type,
+        name:        item.name,
+        rarity:      item.rarity,
+        acquisition: item.acquisition,
+        status:      'SKIP',  // default; overwritten when user acts
+        bugNotes:    '',
+        _decided:    false,
+      }));
+      showScreen('testing');
+      renderItem();
+    }
+
+    function renderItem() {
+      const item = allItems[currentIdx];
+      if (!item) { finishSession(); return; }
+
+      const total    = allItems.length;
+      const done     = results.filter(r => r._decided).length;
+      const pct      = Math.round((done / total) * 100);
+
+      // Find category position
+      const catItems = grouped[item.type];
+      const catIdx   = catItems.findIndex(i => i.name === item.name && i.skinId === item.skinId);
+      const catDone  = results.filter(r => r.type === item.type && r._decided).length;
+
+      document.getElementById('progress-fill').style.width  = pct + '%';
+      document.getElementById('prog-label-left').textContent = 'Item ' + (currentIdx + 1) + ' / ' + total;
+      document.getElementById('prog-label-right').textContent = pct + '% complete';
+
+      document.getElementById('item-category-badge').textContent = item.type;
+      document.getElementById('nav-category').textContent = catDone + ' / ' + catItems.length + ' in category';
+      document.getElementById('item-name').textContent = item.name;
+      document.getElementById('item-progress').textContent =
+        'Item ' + (catIdx + 1) + ' of ' + catItems.length + ' in this category';
+
+      // Meta tags
+      const meta = document.getElementById('item-meta');
+      meta.innerHTML = '';
+      if (item.rarity)      meta.appendChild(makeTag(item.rarity, rarityClass(item.rarity)));
+      if (item.acquisition) meta.appendChild(makeTag(item.acquisition));
+      if (item.skinId)      meta.appendChild(makeTag(item.skinId));
+
+      // Already decided? show previous result
+      const prevResult = results[currentIdx];
+      highlightPrevResult(prevResult._decided ? prevResult.status : null);
+
+      // Back button
+      document.getElementById('btn-prev').disabled = (currentIdx === 0);
+
+      // Hide bug panel
+      cancelBug();
+    }
+
+    function makeTag(text, extra) {
+      const t = document.createElement('span');
+      t.className = 'tag' + (extra ? ' ' + extra : '');
+      t.textContent = text;
+      return t;
+    }
+
+    function rarityClass(rarity) {
+      const r = rarity.toLowerCase();
+      if (r.includes('legendary')) return 'rarity-legendary';
+      if (r.includes('epic'))      return 'rarity-epic';
+      if (r.includes('rare'))      return 'rarity-rare';
+      return 'rarity-common';
+    }
+
+    function highlightPrevResult(status) {
+      const btns = document.querySelectorAll('.action-buttons .btn');
+      btns.forEach(b => b.style.opacity = '1');
+      if (status === 'PASS') document.querySelector('.btn-pass').style.opacity = '0.4';
+      else if (status === 'BUG')  document.querySelector('.btn-bug').style.opacity  = '0.4';
+      else if (status === 'SKIP') document.querySelector('.btn-skip').style.opacity = '0.4';
+    }
+
+    // ============================================================
+    // Actions
+    // ============================================================
+    function markItem(status, bugNotes) {
+      results[currentIdx].status   = status;
+      results[currentIdx].bugNotes = bugNotes || '';
+      results[currentIdx]._decided = true;
+      advance();
+    }
+
+    function advance() {
+      currentIdx++;
+      if (currentIdx >= allItems.length) {
+        finishSession();
+      } else {
+        renderItem();
+      }
+    }
+
+    function goBack() {
+      if (currentIdx > 0) {
+        currentIdx--;
+        renderItem();
+      }
+    }
+
+    function skipCategory() {
+      const currentType = allItems[currentIdx].type;
+      while (currentIdx < allItems.length && allItems[currentIdx].type === currentType) {
+        if (!results[currentIdx]._decided) {
+          results[currentIdx].status   = 'SKIP';
+          results[currentIdx]._decided = true;
+        }
+        currentIdx++;
+      }
+      if (currentIdx >= allItems.length) {
+        finishSession();
+      } else {
+        renderItem();
+      }
+    }
+
+    // ---- Bug panel ----
+    function openBugPanel() {
+      document.getElementById('bug-item-label').textContent = '"' + allItems[currentIdx].name + '"';
+      document.getElementById('bug-notes').value = results[currentIdx].bugNotes || '';
+      document.getElementById('bug-panel').classList.add('open');
+      document.getElementById('action-buttons').style.display = 'none';
+      document.getElementById('bug-notes').focus();
+    }
+
+    function confirmBug() {
+      const notes = document.getElementById('bug-notes').value.trim();
+      closeBugPanel();
+      markItem('BUG', notes);
+    }
+
+    function cancelBug() {
+      closeBugPanel();
+    }
+
+    function closeBugPanel() {
+      document.getElementById('bug-panel').classList.remove('open');
+      document.getElementById('action-buttons').style.display = 'flex';
+    }
+
+    // ============================================================
+    // Finish
+    // ============================================================
+    function finishSession() {
+      const passed  = results.filter(r => r.status === 'PASS').length;
+      const bugs    = results.filter(r => r.status === 'BUG').length;
+      const skipped = results.filter(r => r.status === 'SKIP').length;
+
+      document.getElementById('done-title').textContent =
+        bugs === 0 ? 'All Clear!' : bugs + ' Bug' + (bugs > 1 ? 's' : '') + ' Found';
+
+      document.getElementById('stat-pass').textContent  = passed;
+      document.getElementById('stat-bug').textContent   = bugs;
+      document.getElementById('stat-skip').textContent  = skipped;
+
+      // Bug list
+      const bugResults = results.filter(r => r.status === 'BUG');
+      const wrap = document.getElementById('bug-list-wrap');
+      if (bugResults.length > 0) {
+        wrap.style.display = 'block';
+        const list = document.getElementById('bug-list-items');
+        list.innerHTML = '';
+        bugResults.forEach(r => {
+          const div = document.createElement('div');
+          div.className = 'bug-list-item';
+          div.innerHTML = '<div class="bug-item-name">' + esc(r.name) + '</div>'
+                        + '<div class="bug-item-type">' + esc(r.type) + '</div>'
+                        + (r.bugNotes ? '<div class="bug-item-note">' + esc(r.bugNotes) + '</div>' : '');
+          list.appendChild(div);
+        });
+      } else {
+        wrap.style.display = 'none';
+      }
+
+      document.getElementById('save-status').textContent = '';
+      showScreen('done');
+    }
+
+    // ============================================================
+    // Save & Copy
+    // ============================================================
+    function saveToSheet() {
+      const summary = {
+        total:   results.length,
+        passed:  results.filter(r => r.status === 'PASS').length,
+        bugs:    results.filter(r => r.status === 'BUG').length,
+        skipped: results.filter(r => r.status === 'SKIP').length,
+      };
+
+      const flatResults = results.map(r => ({
+        type:        r.type,
+        name:        r.name,
+        rarity:      r.rarity,
+        acquisition: r.acquisition,
+        status:      r.status,
+        bugNotes:    r.bugNotes,
+      }));
+
+      const statusEl = document.getElementById('save-status');
+      statusEl.className = 'save-status';
+      statusEl.textContent = 'Saving...';
+
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            statusEl.className  = 'save-status ok';
+            statusEl.textContent = 'Saved to tab "' + res.tabName + '"';
+          } else {
+            statusEl.className  = 'save-status err';
+            statusEl.textContent = 'Save failed: ' + res.error;
+          }
+        })
+        .withFailureHandler(err => {
+          statusEl.className  = 'save-status err';
+          statusEl.textContent = 'Save failed: ' + String(err.message || err);
+        })
+        .saveSessionResults(flatResults, summary);
+    }
+
+    function copyBugSummary() {
+      const bugs = results.filter(r => r.status === 'BUG');
+      if (bugs.length === 0) {
+        alert('No bugs to copy.');
+        return;
+      }
+      const lines = ['PRIME RUSH RELEASE TEST — BUG SUMMARY', ''];
+      bugs.forEach((r, i) => {
+        lines.push((i + 1) + '. [' + r.type + '] ' + r.name);
+        if (r.bugNotes) lines.push('   Notes: ' + r.bugNotes);
+      });
+      lines.push('');
+      lines.push('Total bugs: ' + bugs.length);
+
+      navigator.clipboard.writeText(lines.join('\n')).then(() => {
+        const statusEl = document.getElementById('save-status');
+        statusEl.className  = 'save-status ok';
+        statusEl.textContent = 'Bug summary copied to clipboard.';
+      });
+    }
+
+    // ============================================================
+    // Keyboard shortcuts
+    // ============================================================
+    document.addEventListener('keydown', e => {
+      if (!document.getElementById('screen-testing').classList.contains('active')) return;
+
+      const bugPanelOpen = document.getElementById('bug-panel').classList.contains('open');
+
+      if (bugPanelOpen) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); confirmBug(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelBug(); }
+        return;
+      }
+
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); markItem('PASS'); }
+      if (e.key === 'b' || e.key === 'B')      { e.preventDefault(); openBugPanel(); }
+      if (e.key === 's' || e.key === 'S')      { e.preventDefault(); markItem('SKIP'); }
+      if (e.key === 'ArrowLeft')               { e.preventDefault(); goBack(); }
+    });
+
+    // ============================================================
+    // Utilities
+    // ============================================================
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-' + name).classList.add('active');
+    }
+
+    function showError(msg) {
+      document.getElementById('error-msg').textContent = msg;
+      showScreen('error');
+    }
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
